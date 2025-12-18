@@ -1,0 +1,1097 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// NextAuth.js required models
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  password      String?   // For email/password auth
+  role          UserRole  @default(student)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 2FA
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorSecret  String?
+  backupCodes      String?
+
+  // Profile & Privacy
+  publicProfile     Boolean @default(false)
+  showOnLeaderboard Boolean @default(true)
+  optInCaseStudy    Boolean @default(false)
+  timezone          String?
+  age               Int?
+
+  // Discord Integration
+  discordId       String? @unique
+  discordUsername String?
+  discordVerified Boolean @default(false)
+
+  // Role-specific profiles
+  studentProfile StudentProfile?
+  mentorProfile  MentorProfile?
+
+  // Learning Profile
+  learningProfile LearningProfile?
+  progress        Progress[]
+  certificates    Certificate[]
+  achievements    UserAchievement[]
+
+  // Audit logs
+  auditLogs AuditLog[]
+
+  // Affiliate
+  affiliateId String?    @unique
+  referrals   User[]     @relation("UserReferrals")
+  referrerId  String?
+  referrer    User?      @relation("UserReferrals", fields: [referrerId], references: [id])
+
+  // Payment and enrollment relations
+  subscriptions Subscription[]
+  payments       Payment[]
+  enrollments    Enrollment[]
+  affiliateAccount AffiliateAccount?
+  referralRecord  Referral?
+
+  // Cohort
+  cohortId String?
+  cohort   Cohort? @relation(fields: [cohortId], references: [id])
+
+  // Auth
+  accounts             Account[]
+  sessions             Session[]
+  SRSCard              SRSCard[]
+  AssignmentSubmission AssignmentSubmission[]
+
+  // LMS Relations
+  lessonNotes   LessonNote[]
+  quizAttempts  QuizAttempt[]
+  gradesGiven   Grade[] @relation("GradedBy")
+  peerReviews   PeerReview[]
+  attendance    Attendance[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? 
+  access_token      String? 
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? 
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model LearningProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ability     Float @default(0.5) // 0-1 scale
+  engagement  Float @default(0.5)
+  preferences Json? // Learning style preferences
+
+  // SRS (Spaced Repetition System)
+  srsCards SRSCard[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("learning_profiles")
+}
+
+model SRSCard {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  concept     String
+  question    String
+  answer      String
+  difficulty  Float    @default(2.5) // 1-5 scale
+  interval    Int      @default(1) // days
+  repetitions Int      @default(0)
+  easeFactor  Float    @default(2.5)
+  nextReview  DateTime
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  LearningProfile   LearningProfile? @relation(fields: [learningProfileId], references: [id])
+  learningProfileId String?
+
+  @@map("srs_cards")
+}
+
+
+model Progress {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  completed    Boolean  @default(false)
+  progress     Float    @default(0) // 0-1 scale
+  timeSpent    Int      @default(0) // seconds
+  lastAccessed DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, lessonId])
+  @@map("progress")
+}
+
+
+model UserAchievement {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        String // streak, completion, etc.
+  title       String
+  description String?
+  points      Int     @default(0)
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  @@map("user_achievements")
+}
+
+
+
+model Payout {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   AffiliateAccount @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  amount    Float
+  status    PayoutStatus @default(PENDING)
+  method    String // stripe, paypal
+  reference String? // external reference
+  csvUrl    String? // payout CSV URL
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payouts")
+}
+
+model Testimonial {
+  id       String  @id @default(cuid())
+  userId   String?
+  name     String
+  title    String?
+  company  String?
+  content  String  
+  rating   Int // 1-5
+  earnings Float?
+  proofUrl String? // Link to proof of earnings
+
+  // Consent & Verification
+  consentGiven Boolean   @default(false)
+  consentDate  DateTime?
+  verified     Boolean   @default(false)
+  verifiedBy   String?
+  verifiedAt   DateTime?
+
+  // Publishing
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("testimonials")
+}
+
+model WebhookEvent {
+  id         String  @id @default(cuid())
+  type       String
+  payload    Json
+  signature  String?
+  processed  Boolean @default(false)
+  retryCount Int     @default(0)
+
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@map("webhook_events")
+}
+
+model ModerationLog {
+  id           String  @id @default(cuid())
+  action       String // warn, kick, ban, mute
+  targetUserId String
+  moderatorId  String
+  reason       String?
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+
+  @@map("moderation_logs")
+}
+
+model FraudDetection {
+  id         String    @id @default(cuid())
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  riskScore  Float
+  flags      Json // Array of risk flags
+  action     String // flag, quarantine, block
+  reviewed   Boolean   @default(false)
+  reviewedBy String?
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@map("fraud_detection")
+}
+
+// Role-specific profile models
+model StudentProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Academic info
+  currentLevel     String? // beginner, intermediate, advanced
+  learningGoals    String
+  preferredTopics  String
+  timeCommitment   Int? // hours per week
+  
+  // Progress tracking
+  totalLessonsCompleted Int @default(0)
+  averageQuizScore      Float?
+  streakDays            Int @default(0)
+  lastActiveDate        DateTime?
+  
+  // Preferences
+  notificationSettings Json?
+  accessibilityNeeds   String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+model MentorProfile {
+  id         String @id @default(cuid())
+  userId     String @unique
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Professional info
+  expertise        String
+  yearsExperience  Int?
+  certifications   String
+  bio              String?
+  linkedinUrl      String?
+  githubUrl        String?
+  
+  // Availability
+  timezone         String?
+  availableHours   Json? // { day: [start, end] }
+  maxStudents      Int @default(10)
+  currentStudents  Int @default(0)
+  
+  // Performance metrics
+  rating           Float @default(0)
+  totalSessions    Int @default(0)
+  responseTime     Int? // average minutes
+  
+  // Preferences
+  communicationStyle String?
+  teachingMethods    String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("mentor_profiles")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // Action details
+  action    String // login, logout, role_change, profile_update, etc.
+  resource  String? // which resource was affected
+  details   Json? // additional context
+  
+  // Metadata
+  ipAddress  String?
+  userAgent  String?
+  location   String?
+  
+  // Change tracking
+  oldValues Json? // previous values
+  newValues Json? // new values
+  
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// Payment and Subscription models
+model Subscription {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  
+  stripeCustomerId  String   @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId     String?
+  stripeProductId   String?
+  
+  status            SubscriptionStatus @default(active)
+  plan              SubscriptionPlan
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  
+  // Metadata
+  metadata          Json?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  
+  stripePaymentIntentId String? @unique
+  stripeSessionId   String? @unique
+  stripeChargeId    String? @unique
+  
+  amount            Int // in cents
+  currency          String @default("usd")
+  status            PaymentStatus
+  plan              SubscriptionPlan
+  
+  // Affiliate tracking
+  affiliateId       String?
+  affiliate         AffiliateAccount? @relation(fields: [affiliateId], references: [id])
+  commissionAmount  Int? // in cents
+  
+  // Metadata
+  metadata          Json?
+  
+  // Relations
+  refunds           Refund[]
+  commissions       Commission[]
+  enrollments       Enrollment[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("payments")
+}
+
+model Refund {
+  id                String   @id @default(cuid())
+  paymentId         String
+  payment           Payment  @relation(fields: [paymentId], references: [id])
+  
+  stripeRefundId    String? @unique
+  amount            Int // in cents
+  reason            String?
+  status            RefundStatus
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("refunds")
+}
+
+// Affiliate system models
+model AffiliateAccount {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  
+  stripeConnectId   String? @unique
+  commissionRate    Float   @default(0.1) // 10% default
+  totalEarnings     Int     @default(0) // in cents
+  paidEarnings      Int     @default(0) // in cents
+  pendingEarnings   Int     @default(0) // in cents
+  
+  // KYC and verification
+  isVerified        Boolean  @default(false)
+  taxId             String?
+  businessName      String?
+  address           Json?
+  
+  // Referral tracking
+  referralCode      String   @unique
+  referralUrl       String
+  totalReferrals    Int      @default(0)
+  successfulReferrals Int    @default(0)
+  
+  // Relations
+  referrals         Referral[]
+  payments          Payment[]
+  commissions       Commission[]
+  payouts           Payout[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("affiliate_accounts")
+}
+
+model Referral {
+  id                String   @id @default(cuid())
+  affiliateId       String
+  affiliate         AffiliateAccount @relation(fields: [affiliateId], references: [id])
+  
+  referredUserId    String? @unique
+  referredUser      User? @relation(fields: [referredUserId], references: [id])
+  
+  referralCode      String
+  referralUrl       String
+  clickedAt         DateTime @default(now())
+  convertedAt       DateTime?
+  
+  // Conversion tracking
+  conversionValue   Int? // in cents
+  commissionEarned  Int? // in cents
+  
+  // Metadata
+  metadata          Json?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("referrals")
+}
+
+model Commission {
+  id                String   @id @default(cuid())
+  affiliateId       String
+  affiliate         AffiliateAccount @relation(fields: [affiliateId], references: [id])
+  
+  paymentId         String?
+  payment           Payment? @relation(fields: [paymentId], references: [id])
+  
+  amount            Int // in cents
+  rate              Float // commission rate used
+  status            CommissionStatus @default(pending)
+  
+  // Payout tracking
+  payoutId          String?
+  paidAt            DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("commissions")
+}
+
+// Enrollment system
+model Enrollment {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  
+  courseId          String
+  course            Course   @relation(fields: [courseId], references: [id])
+  
+  paymentId         String? @unique
+  payment           Payment? @relation(fields: [paymentId], references: [id])
+  
+  plan              SubscriptionPlan
+  status            EnrollmentStatus @default(active)
+  
+  // Access control
+  accessGrantedAt   DateTime?
+  accessRevokedAt   DateTime?
+  
+  // Course progress
+  modulesUnlocked   String 
+  lessonsCompleted  String 
+  
+  // Discord integration
+  discordRolesSynced Boolean @default(false)
+  discordSyncedAt   DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("enrollments")
+}
+
+// LMS Core Models
+model Course {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  subtitle    String?
+  description String   
+  thumbnail   String?
+  
+  // Content
+  objectives  String?
+  prerequisites String?
+  duration    Int? // in hours
+  level       CourseLevel @default(beginner)
+  
+  // Status
+  published   Boolean  @default(false)
+  featured    Boolean  @default(false)
+  
+  // Pricing (links to payment plans)
+  plans       String // Comma-separated plan names[]
+  
+  // Relations
+  modules     Module[]
+  enrollments Enrollment[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("courses")
+}
+
+model Module {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  order       Int
+  title       String
+  description String?  
+  duration    Int? // in minutes
+  
+  // Unlocking logic
+  requiredForCompletion Boolean @default(true)
+  
+  // Relations
+  lessons     Lesson[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([courseId, order])
+  @@map("modules")
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  moduleId    String
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  
+  order       Int
+  title       String
+  description String?  
+  content     String?   // Markdown content
+  
+  // Video
+  videoUrl    String?
+  videoDuration Int? // in seconds
+  transcript  String?  
+  
+  // Learning materials
+  slidesOutline String?  // JSON or Markdown
+  objectives  String?
+  
+  // Status
+  published   Boolean  @default(false)
+  isFree      Boolean  @default(false) // Preview lesson
+  
+  // Relations
+  assets      LessonAsset[]
+  quizzes     Quiz[]
+  notes       LessonNote[]
+  progress    Progress[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([moduleId, order])
+  @@map("lessons")
+}
+
+model LessonAsset {
+  id          String   @id @default(cuid())
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  type        AssetType
+  title       String
+  description String?
+  url         String
+  fileSize    Int? // in bytes
+  mimeType    String?
+  
+  createdAt   DateTime @default(now())
+
+  @@map("lesson_assets")
+}
+
+model LessonNote {
+  id          String   @id @default(cuid())
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  content     String   
+  timestamp   Int? // Video timestamp in seconds
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("lesson_notes")
+}
+
+model Quiz {
+  id          String   @id @default(cuid())
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  passingScore Float   @default(70) // Percentage
+  timeLimit   Int? // in minutes
+  maxAttempts Int? // null = unlimited
+  
+  // Questions
+  questions   QuizQuestion[]
+  attempts    QuizAttempt[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id          String   @id @default(cuid())
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  
+  order       Int
+  question    String   
+  type        QuestionType @default(multiple_choice)
+  points      Int      @default(1)
+  
+  // Options for multiple choice
+  options     QuizOption[]
+  
+  // Correct answer(s)
+  correctAnswers String // For multiple choice: option IDs; for text: accepted answers
+  explanation String?  
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([quizId, order])
+  @@map("quiz_questions")
+}
+
+model QuizOption {
+  id          String   @id @default(cuid())
+  questionId  String
+  question    QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  order       Int
+  text        String
+  
+  @@unique([questionId, order])
+  @@map("quiz_options")
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  answers     Json // { questionId: answer }
+  score       Float? // Percentage
+  passed      Boolean  @default(false)
+  
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  
+  @@map("quiz_attempts")
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  moduleId    String
+  
+  title       String
+  description String   
+  instructions String  
+  
+  // Grading
+  rubric      Json // Grading rubric
+  maxPoints   Int      @default(100)
+  
+  // Deadlines
+  dueDate     DateTime?
+  
+  // Submission settings
+  allowedFileTypes String // MIME types
+  maxFileSize Int      @default(10485760) // 10MB default
+  requirePeerReview Boolean @default(false)
+  peerReviewCount Int    @default(2)
+  
+  // Relations
+  submissions AssignmentSubmission[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id          String   @id @default(cuid())
+  assignmentId String
+  assignment  Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Submission
+  content     String?  
+  fileUrl     String?
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
+  
+  // Security
+  avScanned   Boolean  @default(false)
+  avScanResult String?
+  
+  // Status
+  status      SubmissionStatus @default(draft)
+  
+  // Grading
+  grade       Grade?
+  peerReviews PeerReview[]
+  
+  submittedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("assignment_submissions")
+}
+
+model Grade {
+  id          String   @id @default(cuid())
+  submissionId String  @unique
+  submission  AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  
+  graderId    String
+  grader      User     @relation("GradedBy", fields: [graderId], references: [id])
+  
+  score       Float
+  maxScore    Float
+  feedback    String?  
+  rubricScores Json? // { criteria: score }
+  
+  status      GradeStatus @default(draft)
+  
+  gradedAt    DateTime @default(now())
+  publishedAt DateTime?
+  
+  @@map("grades")
+}
+
+model PeerReview {
+  id          String   @id @default(cuid())
+  submissionId String
+  submission  AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  
+  reviewerId  String
+  reviewer    User     @relation(fields: [reviewerId], references: [id])
+  
+  score       Float?
+  feedback    String?  
+  helpful     Boolean? // Reviewed by instructor
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([submissionId, reviewerId])
+  @@map("peer_reviews")
+}
+
+model Certificate {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  courseId    String?
+  
+  type        CertificateType
+  title       String
+  description String?
+  
+  // PDF
+  pdfUrl      String?
+  pdfHash     String? // For verification
+  
+  // Verification
+  verificationCode String @unique
+  verificationUrl  String
+  
+  // Metadata
+  completedAt DateTime
+  issuedAt    DateTime @default(now())
+  expiresAt   DateTime?
+  
+  @@map("certificates")
+}
+
+model Cohort {
+  id          String   @id @default(cuid())
+  
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  
+  // Settings
+  maxStudents Int?
+  isActive    Boolean  @default(true)
+  
+  // Relations
+  users       User[]
+  sessions    LiveSession[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("cohorts")
+}
+
+model LiveSession {
+  id          String   @id @default(cuid())
+  cohortId    String
+  cohort      Cohort   @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  
+  // Timing
+  scheduledAt DateTime
+  duration    Int // in minutes
+  
+  // Meeting details
+  meetingUrl  String?
+  recordingUrl String?
+  
+  // Attendance
+  attendance  Attendance[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("live_sessions")
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  status      AttendanceStatus @default(absent)
+  joinedAt    DateTime?
+  leftAt      DateTime?
+  duration    Int? // in minutes
+  
+  createdAt   DateTime @default(now())
+
+  @@unique([sessionId, userId])
+  @@map("attendance")
+}
+
+// Enums
+enum UserRole {
+  student
+  mentor
+  instructor
+  affiliate
+  admin
+  moderator
+  ambassador
+  alumni
+  council
+  overseer
+}
+
+enum AssignmentType {
+  QUIZ
+  PROJECT
+  ESSAY
+  CODE
+  PEER_REVIEW
+}
+
+enum ReferralStatus {
+  PENDING
+  CONFIRMED
+  PAID
+  CANCELLED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  past_due
+  incomplete
+  incomplete_expired
+  trialing
+  unpaid
+}
+
+enum SubscriptionPlan {
+  standard
+  mastery
+  mastermind
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  succeeded
+  failed
+  cancelled
+  refunded
+}
+
+enum RefundStatus {
+  pending
+  succeeded
+  failed
+  cancelled
+}
+
+enum CommissionStatus {
+  pending
+  approved
+  paid
+  cancelled
+}
+
+enum EnrollmentStatus {
+  active
+  suspended
+  cancelled
+  expired
+}
+
+enum CourseLevel {
+  beginner
+  intermediate
+  advanced
+  expert
+}
+
+enum AssetType {
+  document
+  video
+  code
+  link
+  other
+}
+
+enum QuestionType {
+  multiple_choice
+  true_false
+  short_answer
+  essay
+}
+
+enum SubmissionStatus {
+  draft
+  submitted
+  under_review
+  peer_review
+  graded
+  returned
+}
+
+enum GradeStatus {
+  draft
+  published
+  archived
+}
+
+enum CertificateType {
+  completion
+  mastery
+  capstone
+  attendance
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+  excused
+}
+

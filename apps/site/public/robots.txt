@@ -1,0 +1,14 @@
+# Aspire Academy - Robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /_next/
+Disallow: /uploads/
+
+Sitemap: https://aspire.ai/sitemap.xml
+
+
+

@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 
+      NEW PREMIUM PALETTE
+      Base: Deep Void Black & Obsidian
+      Accent: Champagne Gold & Holographic Silver
+      Status: Emerald, Rose, Amber
+    */
+    --background: 240 10% 3.9%; /* #09090b - Obsidian */
+    --foreground: 0 0% 98%; /* #fafafa - White Smoke */
+    
+    --card: 240 10% 5.9%; /* #0c0c0e - Slightly lighter obsidian */
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 10% 5.9%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 46 87% 65%; /* #F5D76E - Champagne Gold */
+    --primary-foreground: 240 10% 3.9%;
+    
+    --secondary: 240 4% 16%; /* #27272a - Dark Grey */
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%; /* #a1a1aa - Zinc */
+    
+    --accent: 46 87% 65%;
+    --accent-foreground: 240 10% 3.9%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 46 87% 65%;
+    
+    --radius: 1rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-brand-gold/30 selection:text-brand-gold;
+    /* Noise texture for premium feel */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  /* Luxury Heading Typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-white;
+  }
+  
+  h1 {
+    @apply text-5xl md:text-7xl font-bold leading-[1.1] bg-gradient-to-b from-white via-white to-white/70 bg-clip-text text-transparent;
+  }
+}
+
+@layer components {
+  /* Glassmorphism Card - The core of the new design */
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl transition-all duration-300 hover:bg-white/10 hover:border-brand-gold/30 hover:shadow-brand-gold/10;
+  }
+  
+  .glass-panel {
+    @apply bg-black/40 backdrop-blur-md border border-white/5 rounded-xl;
+  }
+
+  /* Buttons */
+  .btn-luxury {
+    @apply relative overflow-hidden bg-brand-gold text-brand-black font-semibold px-8 py-4 rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-none;
+  }
+  
+  .btn-luxury::after {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full transition-transform duration-700 ease-in-out;
+  }
+  
+  .btn-luxury:hover::after {
+    @apply translate-x-full;
+  }
+
+  .btn-outline-luxury {
+    @apply bg-transparent border border-white/20 text-white font-medium px-8 py-4 rounded-xl backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-brand-gold hover:text-brand-gold;
+  }
+
+  /* Text Gradients */
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-[#F5D76E] via-[#D4AF37] to-[#AA8420] bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-silver {
+    @apply bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent;
+  }
+
+  /* Layout Utilities */
+  .container-width {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .section-padding {
+    @apply py-24 md:py-32;
+  }
+
+  /* Card Component */
+  .card {
+    @apply bg-card border border-border rounded-xl p-6 shadow-lg;
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-gold via-brand-deep-gold to-brand-gold bg-clip-text text-transparent;
+  }
+
+  /* Brand Colors */
+  .text-brand-muted-text {
+    @apply text-muted-foreground;
+  }
+
+  .bg-brand-black {
+    @apply bg-[#09090b];
+  }
+
+  .bg-brand-dark-surface {
+    @apply bg-[#0c0c0e];
+  }
+
+  .constellation-bg {
+    @apply bg-background relative;
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(245, 215, 110, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(212, 175, 55, 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 40% 20%, rgba(245, 215, 110, 0.02) 0%, transparent 50%);
+  }
+}
+
+/* Animations */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 4s ease-in-out infinite alternate;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 10px -10px #D4AF37; }
+  to { box-shadow: 0 0 30px 5px rgba(212, 175, 55, 0.4); }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-brand-black;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-brand-gold/50 transition-colors;
+}

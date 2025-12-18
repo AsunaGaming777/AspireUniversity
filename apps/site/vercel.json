@@ -1,0 +1,76 @@
+{
+  "buildCommand": "cd ../.. && pnpm install && pnpm --filter site build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "@stripe-publishable-key",
+    "NEXT_PUBLIC_GA4_ID": "@ga4-measurement-id",
+    "NEXT_PUBLIC_SITE_URL": "@site-url"
+  },
+  "build": {
+    "env": {
+      "DATABASE_URL": "@database-url",
+      "DIRECT_URL": "@direct-database-url",
+      "REDIS_URL": "@redis-url",
+      "STRIPE_SECRET_KEY": "@stripe-secret-key",
+      "STRIPE_WEBHOOK_SECRET": "@stripe-webhook-secret",
+      "NEXTAUTH_SECRET": "@nextauth-secret",
+      "NEXTAUTH_URL": "@nextauth-url",
+      "GOOGLE_CLIENT_ID": "@google-client-id",
+      "GOOGLE_CLIENT_SECRET": "@google-client-secret",
+      "DISCORD_CLIENT_ID": "@discord-client-id",
+      "DISCORD_CLIENT_SECRET": "@discord-client-secret",
+      "GITHUB_CLIENT_ID": "@github-client-id",
+      "GITHUB_CLIENT_SECRET": "@github-client-secret",
+      "POSTMARK_API_KEY": "@postmark-api-key",
+      "SENTRY_DSN": "@sentry-dsn",
+      "SENTRY_ORG": "@sentry-org",
+      "SENTRY_PROJECT": "@sentry-project",
+      "SENTRY_AUTH_TOKEN": "@sentry-auth-token",
+      "OTEL_EXPORTER_OTLP_ENDPOINT": "@otel-endpoint",
+      "SITE_URL": "@site-url",
+      "COOKIE_SECRET": "@cookie-secret",
+      "DISCORD_BOT_TOKEN": "@discord-bot-token",
+      "DISCORD_GUILD_ID": "@discord-guild-id",
+      "WEBHOOK_SECRET": "@webhook-secret"
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).(?:jpg|jpeg|png|webp|avif|svg|ico)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/_next/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/monitoring",
+      "destination": "/api/sentry"
+    }
+  ]
+}

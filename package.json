@@ -1,0 +1,47 @@
+{
+  "name": "aspire-ai-school",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aspire AI School - Production-ready AI mastery platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:site": "pnpm --filter site dev",
+    "dev:bot": "pnpm --filter discord-bot dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "test": "turbo test",
+    "test:unit": "turbo test:unit",
+    "test:integration": "turbo test:integration",
+    "test:e2e": "turbo test:e2e",
+    "clean": "turbo clean",
+    "db:generate": "pnpm --filter site db:generate",
+    "db:push": "pnpm --filter site db:push",
+    "db:migrate": "pnpm --filter site db:migrate",
+    "db:seed": "pnpm --filter site db:seed",
+    "bot:register": "pnpm --filter discord-bot register",
+    "docker:up": "docker-compose -f infra/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f infra/docker-compose.yml down",
+    "verify:prod": "bash scripts/verify-production.sh",
+    "deploy:site": "cd apps/site && vercel --prod",
+    "deploy:bot": "cd apps/discord-bot && fly deploy",
+    "load:test": "k6 run infra/load/lesson-view.k6.js",
+    "audit:aspire": "ts-node scripts/audit-aspire.ts",
+    "fix:stubs": "ts-node scripts/audit-aspire.ts --autofix-stubs"
+  },
+  "devDependencies": {
+    "@turbo/gen": "^1.10.12",
+    "turbo": "^1.10.12",
+    "typescript": "^5.2.2"
+  },
+  "packageManager": "pnpm@8.9.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

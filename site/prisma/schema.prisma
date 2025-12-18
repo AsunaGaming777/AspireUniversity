@@ -1,0 +1,498 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Profile & Privacy
+  publicProfile     Boolean @default(false)
+  showOnLeaderboard Boolean @default(true)
+  optInCaseStudy    Boolean @default(false)
+  timezone          String?
+  age               Int?
+
+  // Discord Integration
+  discordId       String? @unique
+  discordUsername String?
+  discordVerified Boolean @default(false)
+
+  // Learning Profile
+  learningProfile LearningProfile?
+  progress        Progress[]
+  assignments     Assignment[]
+  certificates    Certificate[]
+  achievements    UserAchievement[]
+
+  // Affiliate
+  affiliateId String?    @unique
+  affiliate   Affiliate?
+  referrals   User[]     @relation("UserReferrals")
+  referrerId  String?
+  referrer    User?      @relation("UserReferrals", fields: [referrerId], references: [id])
+
+  // Cohort
+  cohortId String?
+  cohort   Cohort? @relation(fields: [cohortId], references: [id])
+
+  // Auth
+  accounts             Account[]
+  sessions             Session[]
+  SRSCard              SRSCard[]
+  AssignmentSubmission AssignmentSubmission[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model LearningProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ability     Float @default(0.5) // 0-1 scale
+  engagement  Float @default(0.5)
+  preferences Json? // Learning style preferences
+
+  // SRS (Spaced Repetition System)
+  srsCards SRSCard[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("learning_profiles")
+}
+
+model SRSCard {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  concept     String
+  question    String
+  answer      String
+  difficulty  Float    @default(2.5) // 1-5 scale
+  interval    Int      @default(1) // days
+  repetitions Int      @default(0)
+  easeFactor  Float    @default(2.5)
+  nextReview  DateTime
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  LearningProfile   LearningProfile? @relation(fields: [learningProfileId], references: [id])
+  learningProfileId String?
+
+  @@map("srs_cards")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  slug        String   @unique
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  modules     Module[]
+  cohorts     Cohort[]
+  Certificate Certificate[]
+
+  @@map("courses")
+}
+
+model Module {
+  id       String @id @default(cuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  order       Int
+  isPublished Boolean @default(false)
+
+  lessons   Lesson[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("modules")
+}
+
+model Lesson {
+  id       String @id @default(cuid())
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  content     String? @db.Text
+  videoUrl    String?
+  duration    Int? // minutes
+  order       Int
+  isPublished Boolean @default(false)
+
+  assignments Assignment[]
+  progress    Progress[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("lessons")
+}
+
+model Assignment {
+  id       String @id @default(cuid())
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?        @db.Text
+  type        AssignmentType
+  points      Int            @default(100)
+  dueDate     DateTime?
+  isPublished Boolean        @default(false)
+
+  submissions AssignmentSubmission[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  User        User?                  @relation(fields: [userId], references: [id])
+  userId      String?
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  content  String?   @db.Text
+  files    Json? // Array of file URLs
+  grade    Float?
+  feedback String?   @db.Text
+  gradedAt DateTime?
+  gradedBy String?
+
+  // Plagiarism detection
+  similarityScore Float?
+  plagiarismFlags Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assignmentId, userId])
+  @@map("assignment_submissions")
+}
+
+model Progress {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  completed    Boolean  @default(false)
+  progress     Float    @default(0) // 0-1 scale
+  timeSpent    Int      @default(0) // seconds
+  lastAccessed DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, lessonId])
+  @@map("progress")
+}
+
+model Certificate {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  title           String
+  description     String?
+  verificationUrl String   @unique
+  issuedAt        DateTime @default(now())
+
+  @@map("certificates")
+}
+
+model Cohort {
+  id       String @id @default(cuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  maxStudents Int?
+  isActive    Boolean   @default(true)
+
+  users    User[]
+  mentors  Mentor[]
+  sessions LiveSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cohorts")
+}
+
+model Mentor {
+  id       String @id @default(cuid())
+  userId   String
+  cohortId String
+  cohort   Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  role        String  @default("mentor")
+  maxStudents Int?
+  timezone    String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, cohortId])
+  @@map("mentors")
+}
+
+model LiveSession {
+  id       String @id @default(cuid())
+  cohortId String
+  cohort   Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  title        String
+  description  String?
+  startTime    DateTime
+  duration     Int // minutes
+  meetingUrl   String?
+  recordingUrl String?
+  isRecorded   Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("live_sessions")
+}
+
+model UserAchievement {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        String // streak, completion, etc.
+  title       String
+  description String?
+  points      Int     @default(0)
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  @@map("user_achievements")
+}
+
+model Affiliate {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code           String  @unique
+  commissionRate Float   @default(0.3) // 30%
+  totalEarnings  Float   @default(0)
+  totalPayouts   Float   @default(0)
+  isActive       Boolean @default(true)
+
+  stripeConnectId String?
+  paypalEmail     String?
+
+  referrals Referral[]
+  payouts   Payout[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("affiliates")
+}
+
+model Referral {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  referredUserId String
+  orderId        String?
+  amount         Float
+  commission     Float
+  status         ReferralStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("referrals")
+}
+
+model Payout {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  amount    Float
+  status    PayoutStatus @default(PENDING)
+  method    String // stripe, paypal
+  reference String? // external reference
+  csvUrl    String? // payout CSV URL
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payouts")
+}
+
+model Testimonial {
+  id       String  @id @default(cuid())
+  userId   String?
+  name     String
+  title    String?
+  company  String?
+  content  String  @db.Text
+  rating   Int // 1-5
+  earnings Float?
+  proofUrl String? // Link to proof of earnings
+
+  // Consent & Verification
+  consentGiven Boolean   @default(false)
+  consentDate  DateTime?
+  verified     Boolean   @default(false)
+  verifiedBy   String?
+  verifiedAt   DateTime?
+
+  // Publishing
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("testimonials")
+}
+
+model WebhookEvent {
+  id         String  @id @default(cuid())
+  type       String
+  payload    Json
+  signature  String?
+  processed  Boolean @default(false)
+  retryCount Int     @default(0)
+
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@map("webhook_events")
+}
+
+model ModerationLog {
+  id           String  @id @default(cuid())
+  action       String // warn, kick, ban, mute
+  targetUserId String
+  moderatorId  String
+  reason       String?
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+
+  @@map("moderation_logs")
+}
+
+model FraudDetection {
+  id         String    @id @default(cuid())
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  riskScore  Float
+  flags      Json // Array of risk flags
+  action     String // flag, quarantine, block
+  reviewed   Boolean   @default(false)
+  reviewedBy String?
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@map("fraud_detection")
+}
+
+// Enums
+enum UserRole {
+  STUDENT
+  MENTOR
+  INSTRUCTOR
+  AFFILIATE
+  ADMIN
+  MODERATOR
+}
+
+enum AssignmentType {
+  QUIZ
+  PROJECT
+  ESSAY
+  CODE
+  PEER_REVIEW
+}
+
+enum ReferralStatus {
+  PENDING
+  CONFIRMED
+  PAID
+  CANCELLED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
