@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        const isValid = verifyTOTP(userWithSecret.twoFactorSecret, code);
+        const isValid = await verifyTOTP(userWithSecret.twoFactorSecret, code);
 
         if (!isValid) {
           return NextResponse.json(

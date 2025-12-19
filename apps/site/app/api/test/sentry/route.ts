@@ -6,16 +6,20 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     // Sentry is optional - only capture if available
     try {
-      const Sentry = await import("@sentry/nextjs");
-      Sentry.captureException(error, {
-        tags: { test: true, source: "api" },
-        extra: {
-          timestamp: new Date().toISOString(),
-          path: req.nextUrl.pathname,
-        },
-      });
+      // Use dynamic import to avoid build-time resolution
+      const SentryModule = await import("@sentry/nextjs");
+      const Sentry = SentryModule.default || SentryModule;
+      if (Sentry && typeof Sentry.captureException === "function") {
+        Sentry.captureException(error, {
+          tags: { test: true, source: "api" },
+          extra: {
+            timestamp: new Date().toISOString(),
+            path: req.nextUrl.pathname,
+          },
+        });
+      }
     } catch {
-      // Sentry not available, skip
+      // Sentry not available, skip silently
     }
 
     return NextResponse.json({

@@ -1,35 +1,43 @@
-import speakeasy from "speakeasy";
-import QRCode from "qrcode";
-
+// Optional dependencies - will use dynamic imports
 export interface TwoFactorSetup {
   secret: string;
   qrCodeUrl: string;
   backupCodes: string[];
 }
 
-export function generateTwoFactorSecret(email: string): TwoFactorSetup {
-  const secret = speakeasy.generateSecret({
-    name: `Aspire (${email})`,
-    issuer: "Aspire Academy",
-    length: 32,
-  });
+export async function generateTwoFactorSecret(email: string): Promise<TwoFactorSetup> {
+  try {
+    const speakeasy = await import("speakeasy");
+    const secret = speakeasy.default.generateSecret({
+      name: `Aspire (${email})`,
+      issuer: "Aspire Academy",
+      length: 32,
+    });
 
-  const backupCodes = generateBackupCodes();
+    const backupCodes = generateBackupCodes();
 
-  return {
-    secret: secret.base32,
-    qrCodeUrl: secret.otpauth_url!,
-    backupCodes,
-  };
+    return {
+      secret: secret.base32,
+      qrCodeUrl: secret.otpauth_url!,
+      backupCodes,
+    };
+  } catch (error) {
+    throw new Error("2FA feature requires 'speakeasy' package. Please install it: pnpm add speakeasy");
+  }
 }
 
-export function verifyTOTP(secret: string, token: string): boolean {
-  return speakeasy.totp.verify({
-    secret,
-    encoding: "base32",
-    token,
-    window: 2, // Allow 2 time steps before/after
-  });
+export async function verifyTOTP(secret: string, token: string): Promise<boolean> {
+  try {
+    const speakeasy = await import("speakeasy");
+    return speakeasy.default.totp.verify({
+      secret,
+      encoding: "base32",
+      token,
+      window: 2, // Allow 2 time steps before/after
+    });
+  } catch (error) {
+    throw new Error("2FA feature requires 'speakeasy' package. Please install it: pnpm add speakeasy");
+  }
 }
 
 export function generateBackupCodes(): string[] {
@@ -51,9 +59,10 @@ function generateRandomCode(): string {
 
 export async function generateQRCode(dataUrl: string): Promise<string> {
   try {
-    return await QRCode.toDataURL(dataUrl);
+    const QRCode = await import("qrcode");
+    return await QRCode.default.toDataURL(dataUrl);
   } catch (error) {
-    throw new Error("Failed to generate QR code");
+    throw new Error("QR code generation requires 'qrcode' package. Please install it: pnpm add qrcode");
   }
 }
 

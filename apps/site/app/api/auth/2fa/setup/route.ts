@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        const setup = generateTwoFactorSecret(user.email);
+        const setup = await generateTwoFactorSecret(user.email);
         const qrCodeUrl = await generateQRCode(setup.qrCodeUrl);
 
         await prisma.user.update({
