@@ -10,7 +10,7 @@ const OWNER_EMAIL = 'azer.kasim@icloud.com'
 
 async function checkOwnerAccess() {
   const session = await auth()
-  if (!session?.user?.email || session.user.email !== OWNER_EMAIL) {
+  if (!session || !('user' in session) || !session.user?.email || session.user.email !== OWNER_EMAIL) {
     throw new Error('Unauthorized: Only the owner can perform this action.')
   }
 }
