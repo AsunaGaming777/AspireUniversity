@@ -75,14 +75,24 @@ const nextConfig = {
   // Webpack configuration for optional dependencies
   webpack: (config, { isServer }) => {
     // Make optional dependencies external to avoid build errors
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        speakeasy: false,
-        qrcode: false,
-        '@sentry/nextjs': false,
-      };
+    // These will be dynamically imported at runtime if needed
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'speakeasy': false,
+      'qrcode': false,
+      '@sentry/nextjs': false,
+    };
+    
+    // For server-side, use externals
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'speakeasy': 'commonjs speakeasy',
+        'qrcode': 'commonjs qrcode',
+        '@sentry/nextjs': 'commonjs @sentry/nextjs',
+      });
     }
+    
     return config;
   },
 }
