@@ -169,7 +169,7 @@ pause >nul
 REM Set environment variables
 echo.
 echo Setting environment variables...
-set DISCORD_BOT_TOKEN=MTQyMjQyNDI5MjAyNDM4NTU5OQ.GAA0Ne.GbN8Me4of06GULdu0Dr6Pls4IjfB5h6IkzyjdQ
+set DISCORD_BOT_TOKEN=YOUR_DISCORD_BOT_TOKEN_HERE
 set DISCORD_GUILD_ID=1422264938692345879
 set DATABASE_URL=postgresql://azerra:azerra_dev_password@localhost:5432/azerra_ai
 set REDIS_URL=redis://localhost:6379
