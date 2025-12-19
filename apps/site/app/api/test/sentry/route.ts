@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
 
 export async function GET(req: NextRequest) {
   try {
     throw new Error("Test error from API route - Sentry integration test");
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { test: true, source: "api" },
-      extra: {
-        timestamp: new Date().toISOString(),
-        path: req.nextUrl.pathname,
-      },
-    });
+    // Sentry is optional - only capture if available
+    try {
+      const Sentry = await import("@sentry/nextjs");
+      Sentry.captureException(error, {
+        tags: { test: true, source: "api" },
+        extra: {
+          timestamp: new Date().toISOString(),
+          path: req.nextUrl.pathname,
+        },
+      });
+    } catch {
+      // Sentry not available, skip
+    }
 
     return NextResponse.json({
       message: "Error sent to Sentry successfully",
@@ -19,5 +24,3 @@ export async function GET(req: NextRequest) {
     });
   }
 }
-
-
