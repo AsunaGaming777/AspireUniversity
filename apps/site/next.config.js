@@ -71,6 +71,20 @@ const nextConfig = {
   
   // Transpile workspace packages
   transpilePackages: ['@aspire/ui', '@aspire/lib'],
+  
+  // Webpack configuration for optional dependencies
+  webpack: (config, { isServer }) => {
+    // Make optional dependencies external to avoid build errors
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        speakeasy: false,
+        qrcode: false,
+        '@sentry/nextjs': false,
+      };
+    }
+    return config;
+  },
 }
 
 // Sentry configuration - disabled for development
