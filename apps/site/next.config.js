@@ -68,6 +68,9 @@ const nextConfig = {
       transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
     },
   },
+  
+  // Transpile workspace packages
+  transpilePackages: ['@aspire/ui', '@aspire/lib'],
 }
 
 // Sentry configuration - disabled for development

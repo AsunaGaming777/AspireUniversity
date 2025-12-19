@@ -1,6 +1,6 @@
 [build]
   base = "."
-  command = "corepack enable && corepack prepare pnpm@8.9.0 --activate && pnpm install --frozen-lockfile && pnpm --filter aspire-academy db:generate && pnpm --filter aspire-academy build"
+  command = "corepack enable && corepack prepare pnpm@8.9.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @aspire/ui build && pnpm --filter aspire-academy db:generate && pnpm --filter aspire-academy build"
   publish = "apps/site/.next"
 
 [build.environment]
