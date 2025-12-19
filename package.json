@@ -11,7 +11,9 @@
     "dev": "turbo dev",
     "dev:site": "pnpm --filter site dev",
     "dev:bot": "pnpm --filter discord-bot dev",
-    "build": "turbo build",
+    "postinstall": "echo 'Using pnpm, skipping npm install'",
+    "build": "corepack enable && corepack prepare pnpm@8.9.0 --activate && pnpm install --frozen-lockfile && pnpm --filter aspire-academy db:generate && pnpm --filter aspire-academy build",
+    "build:legacy": "turbo build",
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
@@ -41,7 +43,6 @@
   },
   "packageManager": "pnpm@8.9.0",
   "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "node": ">=18.0.0"
   }
 }

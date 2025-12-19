@@ -1,0 +1,22 @@
+[build]
+  base = "."
+  command = "corepack enable && corepack prepare pnpm@8.9.0 --activate && pnpm install --frozen-lockfile && pnpm --filter aspire-academy db:generate && pnpm --filter aspire-academy build"
+  publish = "apps/site/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_VERSION = "8.9.0"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-DNS-Prefetch-Control = "on"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
